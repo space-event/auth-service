@@ -1,4 +1,4 @@
-package auth
+package internal
 
 type Config struct {
 	Database DatabaseConfig `toml:"database"`

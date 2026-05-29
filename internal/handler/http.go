@@ -1,15 +1,16 @@
 package handler
 
 import (
-	email "EventSpace/grpc/gen"
-	"EventSpace/internal/auth/service"
-	"EventSpace/pkg/dto"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/space-event/auth-service/internal/service"
+	"github.com/space-event/auth-service/pkg/dto"
+	email "github.com/space-event/email-service/pkg/emailpb"
 )
 
 type AuthHandler struct {

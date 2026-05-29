@@ -1,15 +1,15 @@
 package service
 
 import (
-	"EventSpace/internal/auth/infrastructure"
-	"EventSpace/internal/auth/model"
-	"EventSpace/internal/auth/storage"
-	"EventSpace/pkg/dto"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/space-event/auth-service/internal/infrastructure"
+	"github.com/space-event/auth-service/internal/model"
+	"github.com/space-event/auth-service/internal/storage"
+	"github.com/space-event/auth-service/pkg/dto"
 	"log"
 	"time"
 	"unicode/utf8"

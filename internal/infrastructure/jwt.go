@@ -1,7 +1,7 @@
 package infrastructure
 
 import (
-	"EventSpace/pkg/dto"
+	"github.com/space-event/auth-service/pkg/dto"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"

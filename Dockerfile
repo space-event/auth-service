@@ -2,11 +2,11 @@ FROM golang:latest
 
 WORKDIR /app
 
-COPY ../../go.mod .
+COPY go.mod .
 
 RUN go mod download
 
-COPY ../.. .
+COPY .. .
 
 RUN go build -o auth-service ./cmd/auth-service/main.go
 

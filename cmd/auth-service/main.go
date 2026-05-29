@@ -1,13 +1,13 @@
 package main
 
 import (
-	pb "EventSpace/grpc/gen"
-	"EventSpace/internal/auth"
-	"EventSpace/internal/auth/handler"
-	"EventSpace/internal/auth/infrastructure"
-	"EventSpace/internal/auth/service"
-	"EventSpace/internal/auth/storage"
 	"context"
+	auth "github.com/space-event/auth-service/internal"
+	"github.com/space-event/auth-service/internal/handler"
+	"github.com/space-event/auth-service/internal/infrastructure"
+	"github.com/space-event/auth-service/internal/service"
+	"github.com/space-event/auth-service/internal/storage"
+	pb "github.com/space-event/email-service/pkg/emailpb"
 	"log"
 	"net/http"
 	"os"
