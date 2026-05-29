@@ -1,9 +1,9 @@
 package storage
 
 import (
-	"EventSpace/internal/auth/model"
 	"context"
 	"errors"
+	"github.com/space-event/auth-service/internal/model"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
