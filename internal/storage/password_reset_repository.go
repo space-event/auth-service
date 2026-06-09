@@ -3,8 +3,11 @@ package storage
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/space-event/auth-service/internal/model"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -22,9 +25,21 @@ func NewPasswordResetRepository(db *pgxpool.Pool) *PasswordResetRepository {
 }
 
 func (r *PasswordResetRepository) Create(ctx context.Context, params *model.ResetPassword) error {
-	_, err := r.db.Exec(ctx, `INSERT INTO password_reset_tokens (id, email, token_hash, 
-		expires_at, created_at) VALUES ($1, $2, $3, $4, $5)`, params.ID, params.Email,
-		params.TokenHash, params.ExpiresAt, params.CreatedAt)
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second * 5)
+	defer cancel()
+
+	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	query, args, err := builder.Insert("password_reset_tokens").
+		Columns("id", "email", "token_hash", "expires_at", "created_at").
+		Values(params.ID, params.Email, params.TokenHash, params.ExpiresAt, params.CreatedAt).ToSql()
+
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec(ctx, query, args...)
 
 	return err
 }
@@ -32,8 +47,24 @@ func (r *PasswordResetRepository) Create(ctx context.Context, params *model.Rese
 func (r *PasswordResetRepository) GetByToken(ctx context.Context,
 	tokenHash string) (*model.ResetPassword, error) {
 	var data model.ResetPassword
-	err := r.db.QueryRow(ctx, `SELECT id, email, token_hash, expires_at, 
-		created_at FROM password_reset_tokens WHERE token_hash = $1`, tokenHash).Scan(&data.ID,
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second * 5)
+	defer cancel()
+
+	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	query, args, err := builder.Select().
+		Columns("id", "email", "token_hash", "expires_at", "created_at").
+		From("password_reset_tokens").
+		Where(sq.Eq{
+			"token_hash": tokenHash,
+		}).ToSql()
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.db.QueryRow(ctx, query, args...).Scan(&data.ID,
 		&data.Email, &data.TokenHash, &data.ExpiresAt, &data.CreatedAt)
 
 	if err != nil {
