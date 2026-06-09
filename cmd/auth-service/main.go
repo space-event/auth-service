@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	auth "github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/handler"
 	"github.com/space-event/auth-service/internal/infrastructure"
 	"github.com/space-event/auth-service/internal/service"
 	"github.com/space-event/auth-service/internal/storage"
 	pb "github.com/space-event/email-service/pkg/emailpb"
-	"log"
-	"net/http"
-	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,7 +23,7 @@ import (
 )
 
 func LoadConfig() (*auth.Config, error) {
-	doc, err := os.ReadFile("config/auth/config.toml")
+	doc, err := os.ReadFile("config/config.toml")
 
 	if err != nil {
 		return nil, err
