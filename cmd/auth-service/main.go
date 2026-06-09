@@ -80,7 +80,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	defer conn.Close()
+
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(conn)
 
 	emailService := pb.NewEmailServiceClient(conn)
 
