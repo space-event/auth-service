@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"time"
 
+	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/service"
 	"github.com/space-event/auth-service/pkg/dto"
 	email "github.com/space-event/email-service/pkg/emailpb"
@@ -33,7 +34,11 @@ func SetError(w http.ResponseWriter, message string, statusCode int) {
 func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterRequest
 
+	start := time.Now()
+	logger.Debug("Register request started", "ip", r.RemoteAddr, "user_agent", r.UserAgent())
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Error("HTTP Register error", "error", "invalid_body")
 		SetError(w, "invalid body", http.StatusBadRequest)
 		return
 	}
@@ -41,6 +46,7 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.authService.Register(r.Context(), req)
 
 	if err != nil {
+		logger.Error("Failed to register", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -55,15 +61,26 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
+		logger.Error("Failed to encode response", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	logger.Debug("Registered successfully",
+		"duration_ms", time.Since(start).Milliseconds(),
+		"ip", r.RemoteAddr,
+	)
+
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginRequest
 
+	start := time.Now()
+	logger.Debug("Login request started", "ip", r.RemoteAddr, "user_agent", r.UserAgent())
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Error("HTTP Login error", "error", "invalid_body")
 		SetError(w, "invalid body", http.StatusBadRequest)
 		return
 	}
@@ -71,7 +88,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.authService.Login(r.Context(), req)
 
 	if err != nil {
-		log.Printf("Registration error: %v", err)
+		logger.Info("Failed to login", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -84,15 +101,26 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"access_token": tokens.AccessToken,
 		"expires_at":   tokens.ExpiresAt,
 	})
+
 	if err != nil {
-		log.Printf("json encode error: %v", err)
+		logger.Error("Failed to encode response", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 	}
+
+	logger.Debug("Login successfully",
+		"duration_ms", time.Since(start).Milliseconds(),
+		"ip", r.RemoteAddr,
+	)
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+
+	start := time.Now()
+	logger.Debug("Refresh request started", "ip", r.RemoteAddr, "user_agent", r.UserAgent())
+
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
+		logger.Error("Missing refresh token", "error", err.Error())
 		SetError(w, "missing refresh token", http.StatusUnauthorized)
 		return
 	}
@@ -100,8 +128,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.authService.RefreshAccessToken(r.Context(), cookie.Value)
 
 	if err != nil {
+		logger.Error("Failed to refresh token", "error", err.Error())
 		SetError(w, "invalid refresh token", http.StatusUnauthorized)
-		log.Fatalf("Error: %v", err.Error())
 		return
 	}
 
@@ -113,31 +141,41 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		"access_token": tokens.AccessToken,
 		"expires_at":   tokens.ExpiresAt,
 	})
+
 	if err != nil {
-		log.Printf("json encode error: %v", err)
+		logger.Error("Failed to encode response", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 	}
+
+	logger.Debug("Refresh successfully",
+		"duration_ms", time.Since(start).Milliseconds(),
+		"ip", r.RemoteAddr,
+	)
 
 }
 
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var req dto.ForgotPasswordRequest
 
+	start := time.Now()
+	logger.Debug("ForgotPassword request started", "ip", r.RemoteAddr, "user_agent", r.UserAgent())
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Error("HTTP ForgotPassword error", "error", err.Error())
 		SetError(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
 
-	log.Println(req)
-
 	err := h.authService.VerifyEmail(r.Context(), req.Email)
 	if err != nil {
+		logger.Error("Failed to verify email", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	token, err := h.authService.GenerateToken()
 	if err != nil {
+		logger.Error("Failed to generate token", "error", err.Error())
 		SetError(w, "Something went wrong", http.StatusBadRequest)
 		return
 	}
@@ -145,29 +183,34 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(hash[:])
 
-	log.Printf("Token hash: %s", tokenHash)
-
 	res, err := h.emailService.Send(r.Context(), &email.EmailRequest{EmailTarget: req.Email,
 		MessageText: fmt.Sprintf("http://localhost:5173/reset-password?token=%s", token),
 		ContentType: "text/html", Subject: "Reset password"})
 
 	if err != nil {
+		logger.Error("Failed to send email", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	log.Println(res)
 	if !res.Success {
+		logger.Error("Failed to send email", "error", res.Error)
 		SetError(w, res.Error, http.StatusBadRequest)
 		return
 	}
 
 	if err = h.authService.SaveHashToken(r.Context(), req.Email, tokenHash); err != nil {
+		logger.Error("Failed to save token", "error", err.Error())
 		SetError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+
+	logger.Debug("ForgotPassword successfully",
+		"duration_ms", time.Since(start).Milliseconds(),
+		"ip", r.RemoteAddr,
+	)
 }
 
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
