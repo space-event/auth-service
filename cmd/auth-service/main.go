@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	auth "github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/handler"
 	"github.com/space-event/auth-service/internal/infrastructure"
+	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/service"
 	"github.com/space-event/auth-service/internal/storage"
 	pb "github.com/space-event/email-service/pkg/emailpb"
@@ -48,11 +52,14 @@ func main() {
 		log.Fatalf("Error to load auth config: %v", err)
 	}
 
+	logger.Init(config.LogLevel)
+
 	ctx := context.Background()
 	db, err := pgxpool.New(ctx, config.Database.Addr)
 
 	if err != nil {
-		log.Fatalf("Error connect to db: %v", err.Error())
+		logger.Error("Error connect to db", "error", err.Error())
+		return
 	}
 
 	defer db.Close()
@@ -60,13 +67,15 @@ func main() {
 	accessTTL, err := time.ParseDuration(config.JWT.AccessTokenTTL)
 
 	if err != nil {
-		log.Fatalf("Error to parser access token ttl: %v", err.Error())
+		logger.Error("Error to parser access token ttl", "error", err.Error())
+		return
 	}
 
 	refreshTTL, err := time.ParseDuration(config.JWT.RefreshTokenTTL)
 
 	if err != nil {
-		log.Fatalf("Error to parser refresh token ttl: %v", err.Error())
+		logger.Error("Error to parser refresh token ttl", "error", err.Error())
+		return
 	}
 
 	userRepo := storage.NewUserRepository(db)
@@ -78,7 +87,7 @@ func main() {
 	conn, err := grpc.NewClient("email-service:50051", grpc.WithTransportCredentials(insecure.
 		NewCredentials()))
 	if err != nil {
-		log.Fatal(err.Error())
+		logger.Error("Error to connect to email-service", "error", err.Error())
 	}
 
 	defer func(conn *grpc.ClientConn) {
@@ -108,12 +117,39 @@ func main() {
 	router.Post("/v1/auth/reset-password", authHandler.ResetPassword)
 
 	server := http.Server{
-		Addr:    ":8081",
+		Addr:    config.Addr,
 		Handler: router,
 	}
 
-	log.Println("Start auth")
-	if err = server.ListenAndServe(); err != nil {
-		log.Fatalf("Error to start api-gateway: %v", err.Error())
+	logger.Info("Auth-service serve on", "address", config.Addr)
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	errChan := make(chan error, 1)
+
+	go func() {
+		if err = server.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
+			errChan <- err
+		}
+	}()
+
+	select {
+	case <-signalChan:
+
+		logger.Info("Shutting down gracefully...")
+
+		ctxShutdown, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+
+		if err = server.Shutdown(ctxShutdown); err != nil {
+			logger.Error("HTTP server shutdown error", "error", err.Error())
+		}
+
+		if err = conn.Close(); err != nil {
+			logger.Error("gRPC connection close error", "error", err.Error())
+		}
+	case err = <-errChan:
+		logger.Error("Server error", "error", err.Error())
 	}
 }
