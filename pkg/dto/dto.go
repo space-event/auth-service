@@ -15,21 +15,22 @@ type TokenResponse struct {
 }
 
 type RegisterRequest struct {
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
+	Firstname string `json:"firstname" validate:"required,alpha"`
+	Lastname  string `json:"lastname" validate:"required,alpha"`
+	Email     string `json:"email" validate:"required,email"`
+	Password  string `json:"password" validate:"required,min=8"`
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
+
 type ForgotPasswordRequest struct {
-	Email string `json:"email"`
+	Email string `json:"email" validate:"required,email"`
 }
 
 type ResetPasswordRequest struct {
-	Token    string `json:"token"`
-	Password string `json:"password"`
+	Token    string `json:"token" validate:"required"`
+	Password string `json:"password" validate:"required,min=8"`
 }
