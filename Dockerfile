@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY go.mod .
 
+RUN go mod tidy
+
 RUN go mod download
 
 COPY .. .
