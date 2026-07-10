@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	auth "github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/handler"
 	"github.com/space-event/auth-service/internal/infrastructure"
@@ -83,6 +84,7 @@ func main() {
 	resetPasswordRepo := storage.NewPasswordResetRepository(db)
 	hasher := infrastructure.NewBcryptHasher(bcrypt.DefaultCost)
 	jwtService := infrastructure.NewJWTService(config.JWT.Secret, accessTTL, refreshTTL)
+	valide := validator.New()
 
 	conn, err := grpc.NewClient("email-service:50051", grpc.WithTransportCredentials(insecure.
 		NewCredentials()))
@@ -104,7 +106,7 @@ func main() {
 
 	router := chi.NewRouter()
 
-	authHandler := handler.NewAuthHandler(authService, emailService)
+	authHandler := handler.NewAuthHandler(authService, emailService, valide)
 
 	router.Post("/v1/auth/register", authHandler.RegisterHandler)
 

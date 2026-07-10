@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/space-event/auth-service/internal/logger"
+	"github.com/go-playground/validator/v10"
 	"github.com/space-event/auth-service/internal/service"
 	"github.com/space-event/auth-service/pkg/dto"
 	email "github.com/space-event/email-service/pkg/emailpb"
@@ -17,10 +18,20 @@ import (
 type AuthHandler struct {
 	authService  *service.AuthService
 	emailService email.EmailServiceClient
+	validate     *validator.Validate
 }
 
-func NewAuthHandler(authService *service.AuthService, emailService email.EmailServiceClient) *AuthHandler {
-	return &AuthHandler{authService: authService, emailService: emailService}
+const (
+	ErrInvalidBody         = "invalid body"
+	ErrMissingRefreshToken = "missing refresh token"
+	ErrInvalidRefreshToken = "invalid refresh token"
+	ErrInternalServer      = "internal server error"
+)
+
+func NewAuthHandler(authService *service.AuthService, emailService email.EmailServiceClient,
+	validate *validator.Validate,
+) *AuthHandler {
+	return &AuthHandler{authService: authService, emailService: emailService, validate: validate}
 }
 
 func SetError(w http.ResponseWriter, message string, statusCode int) {
@@ -39,7 +50,12 @@ func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("HTTP Register error", "error", "invalid_body")
-		SetError(w, "invalid body", http.StatusBadRequest)
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
 		return
 	}
 
@@ -81,7 +97,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("HTTP Login error", "error", "invalid_body")
-		SetError(w, "invalid body", http.StatusBadRequest)
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
 		return
 	}
 
@@ -96,7 +117,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	h.setRefreshTokenCookie(w, tokens.RefreshToken)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
 		"access_token": tokens.AccessToken,
 		"expires_at":   tokens.ExpiresAt,
@@ -121,7 +142,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
 		logger.Error("Missing refresh token", "error", err.Error())
-		SetError(w, "missing refresh token", http.StatusUnauthorized)
+		SetError(w, ErrMissingRefreshToken, http.StatusUnauthorized)
 		return
 	}
 
@@ -129,14 +150,14 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Error("Failed to refresh token", "error", err.Error())
-		SetError(w, "invalid refresh token", http.StatusUnauthorized)
+		SetError(w, ErrInvalidRefreshToken, http.StatusUnauthorized)
 		return
 	}
 
 	h.setRefreshTokenCookie(w, tokens.RefreshToken)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
 		"access_token": tokens.AccessToken,
 		"expires_at":   tokens.ExpiresAt,
@@ -162,7 +183,12 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("HTTP ForgotPassword error", "error", err.Error())
-		SetError(w, "Invalid body", http.StatusBadRequest)
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
 		return
 	}
 
@@ -176,7 +202,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	token, err := h.authService.GenerateToken()
 	if err != nil {
 		logger.Error("Failed to generate token", "error", err.Error())
-		SetError(w, "Something went wrong", http.StatusBadRequest)
+		SetError(w, ErrInternalServer, http.StatusInternalServerError)
 		return
 	}
 
@@ -189,13 +215,13 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Error("Failed to send email", "error", err.Error())
-		SetError(w, err.Error(), http.StatusBadRequest)
+		SetError(w, ErrInternalServer, http.StatusInternalServerError)
 		return
 	}
 
 	if !res.Success {
 		logger.Error("Failed to send email", "error", res.Error)
-		SetError(w, res.Error, http.StatusBadRequest)
+		SetError(w, ErrInternalServer, http.StatusInternalServerError)
 		return
 	}
 
@@ -218,7 +244,12 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var req dto.ResetPasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		SetError(w, "invalid body", http.StatusBadRequest)
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		SetError(w, ErrInvalidBody, http.StatusBadRequest)
 		return
 	}
 
