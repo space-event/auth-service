@@ -1,6 +1,9 @@
 [database]
 addr = "${DB_ADDR}"
 
+[service]
+addr = "${SERVICE_ADDR}"
+
 [jwt]
 secret = "${JWT_SECRET}"
 access_token_ttl = "15m"

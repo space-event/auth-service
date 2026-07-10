@@ -6,13 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"time"
+	"unicode/utf8"
+
 	"github.com/space-event/auth-service/internal/infrastructure"
 	"github.com/space-event/auth-service/internal/model"
 	"github.com/space-event/auth-service/internal/storage"
 	"github.com/space-event/auth-service/pkg/dto"
-	"log"
-	"time"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -177,8 +177,6 @@ func (s *AuthService) ResetPassword(ctx context.Context, token string, newPasswo
 
 	hash := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(hash[:])
-
-	log.Printf("Token hash: %s", tokenHash)
 
 	now := time.Now().UTC()
 

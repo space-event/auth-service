@@ -119,11 +119,11 @@ func main() {
 	router.Post("/v1/auth/reset-password", authHandler.ResetPassword)
 
 	server := http.Server{
-		Addr:    config.Addr,
+		Addr:    config.Service.Addr,
 		Handler: router,
 	}
 
-	logger.Info("Auth-service serve on", "address", config.Addr)
+	logger.Info("Auth-service serve on", "address", config.Service.Addr)
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
@@ -131,7 +131,7 @@ func main() {
 	errChan := make(chan error, 1)
 
 	go func() {
-		if err = server.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
+		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
 	}()
