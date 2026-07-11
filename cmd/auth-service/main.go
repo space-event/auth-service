@@ -52,7 +52,12 @@ func runGooseMigrations(pool *pgxpool.Pool) error {
 	db := stdlib.OpenDBFromPool(pool)
 	defer db.Close()
 
-	goose.SetDialect("postgres")
+	if err := goose.SetDialect("postgres"); err != nil {
+		logger.Error("Failed to set dialect goose",
+			"error", err.Error())
+		return err
+	}
+
 	return goose.Up(db, "migrations")
 }
 
@@ -77,7 +82,10 @@ func main() {
 
 	err = runGooseMigrations(db)
 	if err != nil {
-		log.Fatalf(err.Error())
+		logger.Error("Failed to run migrations",
+			"error", err.Error(),
+			"layer", "service")
+		return
 	}
 
 	accessTTL, err := time.ParseDuration(config.JWT.AccessTokenTTL)
