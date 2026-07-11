@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -50,7 +51,13 @@ func LoadConfig() (*auth.Config, error) {
 
 func runGooseMigrations(pool *pgxpool.Pool) error {
 	db := stdlib.OpenDBFromPool(pool)
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Error("Failed to close db",
+				"error", err.Error())
+		}
+	}(db)
 
 	if err := goose.SetDialect("postgres"); err != nil {
 		logger.Error("Failed to set dialect goose",
