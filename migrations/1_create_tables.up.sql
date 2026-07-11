@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE users (
     id text primary key,
     email text not null unique,

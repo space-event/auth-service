@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/stdlib"
 	auth "github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/handler"
 	"github.com/space-event/auth-service/internal/infrastructure"
@@ -22,6 +23,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/pressly/goose/v3"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -46,6 +48,14 @@ func LoadConfig() (*auth.Config, error) {
 	return &config, nil
 }
 
+func runGooseMigrations(pool *pgxpool.Pool) error {
+	db := stdlib.OpenDBFromPool(pool)
+	defer db.Close()
+
+	goose.SetDialect("postgres")
+	return goose.Up(db, "migrations")
+}
+
 func main() {
 	config, err := LoadConfig()
 
@@ -64,6 +74,11 @@ func main() {
 	}
 
 	defer db.Close()
+
+	err = runGooseMigrations(db)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 
 	accessTTL, err := time.ParseDuration(config.JWT.AccessTokenTTL)
 
