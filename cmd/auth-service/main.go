@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/stdlib"
 	auth "github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/handler"
 	"github.com/space-event/auth-service/internal/infrastructure"
@@ -22,6 +24,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/pressly/goose/v3"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -46,6 +49,25 @@ func LoadConfig() (*auth.Config, error) {
 	return &config, nil
 }
 
+func runGooseMigrations(pool *pgxpool.Pool) error {
+	db := stdlib.OpenDBFromPool(pool)
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Error("Failed to close db",
+				"error", err.Error())
+		}
+	}(db)
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		logger.Error("Failed to set dialect goose",
+			"error", err.Error())
+		return err
+	}
+
+	return goose.Up(db, "migrations")
+}
+
 func main() {
 	config, err := LoadConfig()
 
@@ -64,6 +86,14 @@ func main() {
 	}
 
 	defer db.Close()
+
+	err = runGooseMigrations(db)
+	if err != nil {
+		logger.Error("Failed to run migrations",
+			"error", err.Error(),
+			"layer", "service")
+		return
+	}
 
 	accessTTL, err := time.ParseDuration(config.JWT.AccessTokenTTL)
 
