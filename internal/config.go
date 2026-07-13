@@ -12,7 +12,8 @@ type DatabaseConfig struct {
 }
 
 type Service struct {
-	Addr string `toml:"addr"`
+	AddrHTTP string `toml:"addr_http"`
+	AddrGRPC string `toml:"addr_grpc"`
 }
 type JWTConfig struct {
 	Secret          string `toml:"secret"`

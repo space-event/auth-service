@@ -42,7 +42,7 @@ func SetError(w http.ResponseWriter, message string, statusCode int) {
 	})
 }
 
-func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var req dto.RegisterRequest
 
