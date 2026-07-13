@@ -4,7 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	pbAuth "github.com/space-event/auth-service/pkg/authpb"
+	"google.golang.org/grpc/reflection"
+
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,7 +23,7 @@ import (
 	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/service"
 	"github.com/space-event/auth-service/internal/storage"
-	pb "github.com/space-event/email-service/pkg/emailpb"
+	pbEmail "github.com/space-event/email-service/pkg/emailpb"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -109,6 +113,7 @@ func main() {
 		return
 	}
 
+	// init
 	userRepo := storage.NewUserRepository(db)
 	tokenRepo := storage.NewRefreshTokenRepository(db)
 	resetPasswordRepo := storage.NewPasswordResetRepository(db)
@@ -121,48 +126,62 @@ func main() {
 	if err != nil {
 		logger.Error("Error to connect to email-service", "error", err.Error())
 	}
-
-	defer func(conn *grpc.ClientConn) {
-		err := conn.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(conn)
-
-	emailService := pb.NewEmailServiceClient(conn)
-
+	emailService := pbEmail.NewEmailServiceClient(conn)
 	authService := service.NewAuthService(hasher, resetPasswordRepo, tokenRepo, userRepo,
 		jwtService)
 
+	defer func(conn *grpc.ClientConn) {
+		if err := conn.Close(); err != nil {
+			logger.Error("Failed to close gRPC connection", "error", err.Error())
+		}
+	}(conn)
+
+	// http
 	router := chi.NewRouter()
-
 	authHandler := handler.NewAuthHandler(authService, emailService, valide)
-
-	router.Post("/v1/auth/register", authHandler.RegisterHandler)
-
+	router.Post("/v1/auth/register", authHandler.Register)
 	router.Post("/v1/auth/login", authHandler.Login)
-
 	router.Post("/v1/auth/refresh", authHandler.Refresh)
-
 	router.Post("/v1/auth/forgot-password", authHandler.ForgotPassword)
-
 	router.Post("/v1/auth/reset-password", authHandler.ResetPassword)
 
 	server := http.Server{
-		Addr:    config.Service.Addr,
+		Addr:    config.Service.AddrHTTP,
 		Handler: router,
 	}
 
-	logger.Info("Auth-service serve on", "address", config.Service.Addr)
+	// gRPC
+	listener, err := net.Listen("tcp", config.Service.AddrGRPC)
+	if err != nil {
+		logger.Error("Failed to listen",
+			"address", config.Service.AddrGRPC,
+			"error", err.Error())
+	}
+	authGRPCServer := handler.NewAuthGRPCServer(valide, authService, emailService)
+	grpcServer := grpc.NewServer()
+	pbAuth.RegisterAuthServiceServer(grpcServer, authGRPCServer)
+	reflection.Register(grpcServer)
 
+	// channels
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
-	errChan := make(chan error, 1)
+	errHTTPChan := make(chan error, 1)
+	errGRPCChan := make(chan error, 1)
 
+	logger.Info("Auth-service http serve on",
+		"address", config.Service.AddrHTTP)
 	go func() {
 		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errChan <- err
+			errHTTPChan <- err
+		}
+	}()
+
+	logger.Info("Auth-service gRPC serve on",
+		"address", config.Service.AddrGRPC)
+	go func() {
+		if err = grpcServer.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			errGRPCChan <- err
 		}
 	}()
 
@@ -181,7 +200,14 @@ func main() {
 		if err = conn.Close(); err != nil {
 			logger.Error("gRPC connection close error", "error", err.Error())
 		}
-	case err = <-errChan:
-		logger.Error("Server error", "error", err.Error())
+
+		grpcServer.GracefulStop()
+
+	case err = <-errHTTPChan:
+		logger.Error("Server http error", "error", err.Error())
+
+	case err = <-errGRPCChan:
+		logger.Error("Server gRPC error", "error", err.Error())
 	}
+
 }

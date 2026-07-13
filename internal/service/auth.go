@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"time"
-	"unicode/utf8"
 
 	"github.com/space-event/auth-service/internal/infrastructure"
 	"github.com/space-event/auth-service/internal/model"
@@ -46,14 +45,6 @@ func (s *AuthService) GenerateToken() (string, error) {
 }
 
 func (s *AuthService) Register(ctx context.Context, request dto.RegisterRequest) (*dto.TokenResponse, error) {
-
-	if request.Email == "" {
-		return nil, ErrInvalidEmail
-	}
-
-	if utf8.RuneCountInString(request.Password) < 6 {
-		return nil, ErrWeakPassword
-	}
 
 	exists, err := s.userRepo.Exists(ctx, request.Email)
 

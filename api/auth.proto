@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "./pkg/authpb/;auth";
+
+import "google/protobuf/timestamp.proto";
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RegisterRequest {
+  string firstname = 1;
+  string lastname = 2;
+  string email = 3;
+  string password = 4;
+}
+
+message AuthResponse {
+ string access_token = 1;
+ string refresh_token = 2;
+ google.protobuf.Timestamp expires_at = 3;
+}
+
+message RefreshRequest {
+  string refresh_token = 1;
+}
+
+message ForgotPasswordRequest {
+  string email = 1;
+}
+
+message ForgotPasswordResponse {
+
+}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string password = 2;
+}
+
+message ResetPasswordResponse {
+
+}
+
+
+service AuthService {
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc Register(RegisterRequest) returns (AuthResponse);
+  rpc Refresh(RefreshRequest) returns (AuthResponse);
+  rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+}
+
+
+
+

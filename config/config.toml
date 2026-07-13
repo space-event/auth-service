@@ -2,7 +2,8 @@
 addr = "${DB_ADDR}"
 
 [service]
-addr = "${SERVICE_ADDR}"
+addr_http = "${SERVICE_ADDR_HTTP}"
+addr_grpc = "${SERVICE_ADDR_GRPC}"
 
 [jwt]
 secret = "${JWT_SECRET}"
