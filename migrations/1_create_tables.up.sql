@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE users (
-    id text primary key,
+    id uuid primary key,
     email text not null unique,
     firstname text not null,
     lastname text not null,
@@ -9,8 +9,8 @@ CREATE TABLE users (
 );
 
 CREATE TABLE refresh_tokens (
-    id text primary key,
-    token text not null,
+    id uuid primary key,
+    token text not null unique ,
     expires_at timestamptz not null,
     is_revoked boolean not null,
     user_id text not null,
@@ -18,9 +18,9 @@ CREATE TABLE refresh_tokens (
 );
 
 CREATE TABLE password_reset_tokens (
-    id text not null,
+    id uuid primary key,
     email text not null,
-    token_hash text not null,
+    token_hash text not null unique,
     expires_at timestamptz not null,
     created_at timestamptz not null
 );

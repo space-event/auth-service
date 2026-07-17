@@ -133,3 +133,86 @@ func (r *PasswordResetRepository) GetByToken(ctx context.Context, tokenHash stri
 
 	return &data, nil
 }
+
+func (r *PasswordResetRepository) DeleteByToken(ctx context.Context, tokenHash string) error {
+
+	start := time.Now()
+
+	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	query, args, err := builder.Delete("password_reset_tokens").
+		Where(sq.Eq{
+			"token_hash": tokenHash,
+		}).ToSql()
+
+	if err != nil {
+		logger.Error("Failed to build delete query",
+			"layer", "db",
+			"error", err.Error(),
+			"token_hash_prefix", tokenHash[:8],
+		)
+		return err
+	}
+
+	logger.Debug("Delete reset password token by hash",
+		"layer", "db",
+		"token_hash_prefix", tokenHash[:8],
+	)
+
+	_, err = r.db.Exec(ctx, query, args...)
+	if err != nil {
+		logger.Error("Failed to delete expired password reset tokens",
+			"layer", "db",
+			"error", err.Error(),
+			"duration_ms", time.Since(start).Milliseconds(),
+			"token_hash_prefix", tokenHash[:8],
+		)
+		return err
+	}
+
+	logger.Debug("Deleted password reset token by hash",
+		"layer", "db",
+		"token_hash_prefix", tokenHash[:8],
+	)
+
+	return nil
+
+}
+
+func (r *PasswordResetRepository) DeleteExpired(ctx context.Context) error {
+
+	start := time.Now()
+
+	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	query, args, err := builder.Delete("password_reset_tokens").
+		Where(sq.Lt{
+			"expires_at": time.Now().UTC(),
+		}).ToSql()
+
+	if err != nil {
+		logger.Error("Failed to build delete expired query",
+			"layer", "db",
+			"error", err.Error(),
+		)
+		return err
+	}
+
+	result, err := r.db.Exec(ctx, query, args...)
+	if err != nil {
+		logger.Error("Failed to delete expired password reset tokens",
+			"layer", "db",
+			"error", err.Error(),
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+		return err
+	}
+
+	logger.Debug("Deleted expired password reset tokens",
+		"layer", "db",
+		"rows_affected", result.RowsAffected(),
+		"duration_ms", time.Since(start).Milliseconds(),
+	)
+
+	return nil
+}
