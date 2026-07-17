@@ -16,6 +16,14 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const (
+	LogLevel         = "error"
+	TestEmail        = "test@gmail.com"
+	TestFirstname    = "test-firstname"
+	TestLastname     = "test-lastname"
+	TestEmailAnother = "test2@gmail.com"
+)
+
 type TestDb struct {
 	Pool             *pgxpool.Pool
 	Container        *postgres.PostgresContainer

@@ -14,7 +14,7 @@ import (
 
 func TestResetPasswordRepository_Create(t *testing.T) {
 
-	logger.Init("error")
+	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
 	defer testDb.TearDown()
@@ -23,7 +23,7 @@ func TestResetPasswordRepository_Create(t *testing.T) {
 
 	params := &model.ResetPassword{
 		ID:        uuid.NewString(),
-		Email:     "test@gmail.ru",
+		Email:     TestEmail,
 		TokenHash: uuid.NewString(),
 		ExpiresAt: time.Now().Add(5 * time.Minute).UTC(),
 		CreatedAt: time.Now().UTC(),
@@ -43,7 +43,7 @@ func TestResetPasswordRepository_Create(t *testing.T) {
 
 func TestResetPasswordRepository_Create_DuplicateID(t *testing.T) {
 
-	logger.Init("error")
+	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
 	defer testDb.TearDown()
@@ -52,7 +52,7 @@ func TestResetPasswordRepository_Create_DuplicateID(t *testing.T) {
 
 	params := &model.ResetPassword{
 		ID:        uuid.NewString(),
-		Email:     "test@gmail.ru",
+		Email:     TestEmail,
 		TokenHash: uuid.NewString(),
 		ExpiresAt: time.Now().Add(5 * time.Minute).UTC(),
 		CreatedAt: time.Now().UTC(),
@@ -67,7 +67,7 @@ func TestResetPasswordRepository_Create_DuplicateID(t *testing.T) {
 
 func TestResetPasswordRepository_Create_DuplicateTokenHash(t *testing.T) {
 
-	logger.Init("error")
+	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
 	defer testDb.TearDown()
@@ -78,7 +78,7 @@ func TestResetPasswordRepository_Create_DuplicateTokenHash(t *testing.T) {
 
 	params1 := &model.ResetPassword{
 		ID:        uuid.NewString(),
-		Email:     "test1@gmail.ru",
+		Email:     TestEmail,
 		TokenHash: tokenHash,
 		ExpiresAt: time.Now().Add(5 * time.Minute).UTC(),
 		CreatedAt: time.Now().UTC(),
@@ -86,7 +86,7 @@ func TestResetPasswordRepository_Create_DuplicateTokenHash(t *testing.T) {
 
 	params2 := &model.ResetPassword{
 		ID:        uuid.NewString(),
-		Email:     "test2@gmail.ru",
+		Email:     TestEmailAnother,
 		TokenHash: tokenHash,
 		ExpiresAt: time.Now().Add(5 * time.Minute).UTC(),
 		CreatedAt: time.Now().UTC(),
@@ -101,8 +101,37 @@ func TestResetPasswordRepository_Create_DuplicateTokenHash(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestResetPasswordRepository_CreateWithDuplicateEmail(t *testing.T) {
+	logger.Init(LogLevel)
+
+	testDb := SetupTestDb(t)
+	defer testDb.TearDown()
+
+	resetPasswordRepo := storage.NewPasswordResetRepository(testDb.Pool)
+
+	tokens := make([]*model.ResetPassword, 5)
+	for i := 0; i < 5; i++ {
+		token := &model.ResetPassword{
+			ID:        uuid.NewString(),
+			Email:     TestEmail,
+			TokenHash: uuid.NewString(),
+			ExpiresAt: time.Now().UTC().Add(5 * time.Minute),
+			CreatedAt: time.Now().UTC(),
+		}
+		err := resetPasswordRepo.Create(t.Context(), token)
+		require.NoError(t, err)
+		tokens[i] = token
+	}
+
+	for _, token := range tokens {
+		result, err := resetPasswordRepo.GetByToken(t.Context(), token.TokenHash)
+		require.NoError(t, err)
+		assert.Equal(t, token.Email, result.Email)
+	}
+}
+
 func TestResetPasswordRepository_GetByToken_NoFound(t *testing.T) {
-	logger.Init("error")
+	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
 	defer testDb.TearDown()
@@ -116,7 +145,7 @@ func TestResetPasswordRepository_GetByToken_NoFound(t *testing.T) {
 
 func TestResetPasswordRepository_GetByToken_Expired(t *testing.T) {
 
-	logger.Init("error")
+	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
 	defer testDb.TearDown()
@@ -125,7 +154,7 @@ func TestResetPasswordRepository_GetByToken_Expired(t *testing.T) {
 
 	params := &model.ResetPassword{
 		ID:        uuid.NewString(),
-		Email:     "test@gmail.ru",
+		Email:     TestEmail,
 		TokenHash: uuid.NewString(),
 		ExpiresAt: time.Now().Add(-1 * time.Hour).UTC(),
 		CreatedAt: time.Now().UTC().Add(-2 * time.Hour).UTC(),
@@ -141,7 +170,7 @@ func TestResetPasswordRepository_GetByToken_Expired(t *testing.T) {
 }
 
 func TestResetPasswordRepository_DeleteByHash(t *testing.T) {
-	logger.Init("error")
+	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
 	defer testDb.TearDown()
@@ -150,7 +179,7 @@ func TestResetPasswordRepository_DeleteByHash(t *testing.T) {
 
 	params := &model.ResetPassword{
 		ID:        uuid.NewString(),
-		Email:     "test@gmail.ru",
+		Email:     TestEmail,
 		TokenHash: uuid.NewString(),
 		ExpiresAt: time.Now().Add(5 * time.Minute).UTC(),
 		CreatedAt: time.Now().UTC(),
@@ -171,7 +200,7 @@ func TestResetPasswordRepository_DeleteByHash(t *testing.T) {
 
 func TestResetPasswordRepository_DeleteExpired(t *testing.T) {
 
-	logger.Init("error")
+	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
 	defer testDb.TearDown()
@@ -180,7 +209,7 @@ func TestResetPasswordRepository_DeleteExpired(t *testing.T) {
 
 	params := &model.ResetPassword{
 		ID:        uuid.NewString(),
-		Email:     "test@gmail.ru",
+		Email:     TestEmail,
 		TokenHash: uuid.NewString(),
 		ExpiresAt: time.Now().Add(-1 * time.Hour).UTC(),
 		CreatedAt: time.Now().UTC().Add(-2 * time.Hour).UTC(),
