@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-playground/assert/v2"
 	"github.com/google/uuid"
 	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/model"
 	"github.com/space-event/auth-service/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +40,7 @@ func TestUserRepository_Create(t *testing.T) {
 	assert.Equal(t, user.PasswordHash, result.PasswordHash)
 	assert.Equal(t, user.Firstname, result.Firstname)
 	assert.Equal(t, user.Lastname, result.Lastname)
-	assert.Equal(t, user.CreatedAt.UTC(), result.CreatedAt.UTC())
+	assert.WithinDuration(t, user.CreatedAt, result.CreatedAt, time.Microsecond)
 }
 
 func TestUserRepository_Create_DuplicateID(t *testing.T) {
@@ -138,7 +138,7 @@ func TestUserRepository_GetByEmail_Exist(t *testing.T) {
 	assert.Equal(t, user.PasswordHash, result.PasswordHash)
 	assert.Equal(t, user.Firstname, result.Firstname)
 	assert.Equal(t, user.Lastname, result.Lastname)
-	assert.Equal(t, user.CreatedAt.UTC(), result.CreatedAt.UTC())
+	assert.WithinDuration(t, user.CreatedAt, result.CreatedAt, time.Microsecond)
 }
 
 func TestUserRepository_GetByEmail_NoFound(t *testing.T) {
@@ -151,7 +151,7 @@ func TestUserRepository_GetByEmail_NoFound(t *testing.T) {
 
 	result, err := userRepo.GetByEmail(t.Context(), TestEmail)
 	require.Error(t, err)
-	assert.Equal(t, result, nil)
+	assert.Nil(t, result)
 }
 
 func TestUserRepository_GetByID_Exist(t *testing.T) {
@@ -181,7 +181,7 @@ func TestUserRepository_GetByID_Exist(t *testing.T) {
 	assert.Equal(t, user.PasswordHash, result.PasswordHash)
 	assert.Equal(t, user.Firstname, result.Firstname)
 	assert.Equal(t, user.Lastname, result.Lastname)
-	assert.Equal(t, user.CreatedAt.UTC(), result.CreatedAt.UTC())
+	assert.WithinDuration(t, user.CreatedAt, result.CreatedAt, time.Microsecond)
 }
 
 func TestUserRepository_GetByID_NoFound(t *testing.T) {
@@ -194,7 +194,7 @@ func TestUserRepository_GetByID_NoFound(t *testing.T) {
 
 	result, err := userRepo.GetByID(t.Context(), uuid.NewString())
 	require.Error(t, err)
-	assert.Equal(t, result, nil)
+	assert.Nil(t, result)
 }
 
 func TestUserRepository_Exist_True(t *testing.T) {

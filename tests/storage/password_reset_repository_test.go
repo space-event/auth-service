@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-playground/assert/v2"
 	"github.com/google/uuid"
 	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/model"
 	"github.com/space-event/auth-service/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,8 +36,8 @@ func TestResetPasswordRepository_Create(t *testing.T) {
 	assert.Equal(t, result.ID, params.ID)
 	assert.Equal(t, result.Email, params.Email)
 	assert.Equal(t, result.TokenHash, params.TokenHash)
-	assert.Equal(t, result.ExpiresAt.UTC(), params.ExpiresAt.UTC())
-	assert.Equal(t, result.CreatedAt.UTC(), params.CreatedAt.UTC())
+	assert.WithinDuration(t, result.ExpiresAt, params.ExpiresAt, time.Microsecond)
+	assert.WithinDuration(t, result.CreatedAt, params.CreatedAt, time.Microsecond)
 }
 
 func TestResetPasswordRepository_Create_DuplicateID(t *testing.T) {
@@ -135,9 +135,9 @@ func TestResetPasswordRepository_GetByToken_NoFound(t *testing.T) {
 
 	resetPasswordRepo := storage.NewPasswordResetRepository(testDb.Pool)
 
-	result, err := resetPasswordRepo.GetByToken(t.Context(), "123213213")
+	result, err := resetPasswordRepo.GetByToken(t.Context(), uuid.NewString())
 	require.Error(t, err)
-	assert.Equal(t, result, nil)
+	assert.Nil(t, result)
 }
 
 func TestResetPasswordRepository_GetByToken_Expired(t *testing.T) {

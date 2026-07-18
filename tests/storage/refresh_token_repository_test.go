@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-playground/assert/v2"
 	"github.com/google/uuid"
 	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/model"
 	"github.com/space-event/auth-service/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,10 +36,10 @@ func TestRefreshTokenRepository_Create_And_GetByToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, params.ID, result.ID)
 	assert.Equal(t, params.Token, result.Token)
-	assert.Equal(t, params.ExpiresAt.UTC(), result.ExpiresAt.UTC())
+	assert.WithinDuration(t, params.ExpiresAt, result.ExpiresAt, time.Microsecond)
 	assert.Equal(t, params.IsRevoked, result.IsRevoked)
 	assert.Equal(t, params.UserID, result.UserID)
-	assert.Equal(t, params.CreatedAt.UTC(), result.CreatedAt.UTC())
+	assert.WithinDuration(t, params.CreatedAt, result.CreatedAt, time.Microsecond)
 }
 
 func TestRefreshTokenRepository_Create_DuplicateUserID(t *testing.T) {
@@ -206,7 +206,7 @@ func TestRefreshTokenRepository_DeleteExpired(t *testing.T) {
 
 	result, err := refreshRepo.GetByToken(t.Context(), params.Token)
 	require.Error(t, err)
-	assert.Equal(t, result, nil)
+	assert.Nil(t, result)
 }
 
 func TestRefreshTokenRepository_DeleteByUserID(t *testing.T) {
@@ -234,7 +234,7 @@ func TestRefreshTokenRepository_DeleteByUserID(t *testing.T) {
 
 	result, err := refreshRepo.GetByToken(t.Context(), params.Token)
 	require.Error(t, err)
-	assert.Equal(t, result, nil)
+	assert.Nil(t, result)
 }
 
 func TestRefreshTokenRepository_DeleteByToken(t *testing.T) {
@@ -262,5 +262,5 @@ func TestRefreshTokenRepository_DeleteByToken(t *testing.T) {
 
 	result, err := refreshRepo.GetByToken(t.Context(), params.Token)
 	require.Error(t, err)
-	assert.Equal(t, result, nil)
+	assert.Nil(t, result)
 }
