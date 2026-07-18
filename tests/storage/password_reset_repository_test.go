@@ -13,7 +13,6 @@ import (
 )
 
 func TestResetPasswordRepository_Create(t *testing.T) {
-
 	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
@@ -42,7 +41,6 @@ func TestResetPasswordRepository_Create(t *testing.T) {
 }
 
 func TestResetPasswordRepository_Create_DuplicateID(t *testing.T) {
-
 	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
@@ -66,7 +64,6 @@ func TestResetPasswordRepository_Create_DuplicateID(t *testing.T) {
 }
 
 func TestResetPasswordRepository_Create_DuplicateTokenHash(t *testing.T) {
-
 	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
@@ -144,7 +141,6 @@ func TestResetPasswordRepository_GetByToken_NoFound(t *testing.T) {
 }
 
 func TestResetPasswordRepository_GetByToken_Expired(t *testing.T) {
-
 	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
@@ -199,7 +195,6 @@ func TestResetPasswordRepository_DeleteByHash(t *testing.T) {
 }
 
 func TestResetPasswordRepository_DeleteExpired(t *testing.T) {
-
 	logger.Init(LogLevel)
 
 	testDb := SetupTestDb(t)
