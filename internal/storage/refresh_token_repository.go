@@ -293,3 +293,103 @@ func (r *RefreshTokenRepository) DeleteExpired(ctx context.Context) error {
 
 	return nil
 }
+
+func (r *RefreshTokenRepository) DeleteByUserId(ctx context.Context, userID string) error {
+
+	start := time.Now()
+
+	logger.Debug("Deleting refresh tokens by user_id",
+		"layer", "db",
+		"user_id", userID,
+	)
+
+	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	query, args, err := builder.Delete("refresh_tokens").
+		Where(sq.Eq{
+			"user_id": userID,
+		}).ToSql()
+
+	if err != nil {
+		logger.Error("Failed to build delete query by user_id",
+			"layer", "db",
+			"error", err.Error(),
+			"user_id", userID,
+		)
+		return err
+	}
+
+	result, err := r.db.Exec(ctx, query, args...)
+	if err != nil {
+		logger.Error("Failed to delete refresh tokens by user_id",
+			"layer", "db",
+			"user_id", userID,
+			"error", err.Error(),
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+		return err
+	}
+
+	rowsAffected := result.RowsAffected()
+	if rowsAffected > 0 {
+		logger.Info("Deleted refresh tokens by user_id",
+			"layer", "db",
+			"user_id", userID,
+			"rows_affected", rowsAffected,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+	} else {
+		logger.Debug("No found refresh tokens to delete by user_id",
+			"layer", "db",
+			"user_id", userID,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+	}
+
+	return nil
+}
+
+func (r *RefreshTokenRepository) DeleteByToken(ctx context.Context, token string) error {
+
+	start := time.Now()
+
+	logger.Debug("Deleting refresh tokens by token",
+		"layer", "db",
+		"token_prefix", token[:8],
+	)
+
+	builder := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+	query, args, err := builder.Delete("refresh_tokens").
+		Where(sq.Eq{
+			"token": token,
+		}).ToSql()
+
+	if err != nil {
+		logger.Error("Failed to build delete query by token",
+			"layer", "db",
+			"token_prefix", token[:8],
+			"error", err.Error(),
+		)
+		return err
+	}
+
+	_, err = r.db.Exec(ctx, query, args...)
+	if err != nil {
+		logger.Error("Failed to delete refresh tokens by token",
+			"layer", "db",
+			"error", err.Error(),
+			"token_prefix", token[:8],
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+		return err
+	}
+
+	logger.Debug("Refresh token delete successfully by token",
+		"layer", "db",
+		"token_prefix", token[:8],
+		"duration_ms", time.Since(start).Milliseconds(),
+	)
+
+	return nil
+}
