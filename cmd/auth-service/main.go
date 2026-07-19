@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
 	pbAuth "github.com/space-event/auth-service/pkg/authpb"
 	"google.golang.org/grpc/reflection"
 
@@ -121,7 +122,7 @@ func main() {
 	jwtService := infrastructure.NewJWTService(config.JWT.Secret, accessTTL, refreshTTL)
 	valide := validator.New()
 
-	conn, err := grpc.NewClient("email-service:50051", grpc.WithTransportCredentials(insecure.
+	conn, err := grpc.NewClient(config.Service.AddrEmailService, grpc.WithTransportCredentials(insecure.
 		NewCredentials()))
 	if err != nil {
 		logger.Error("Error to connect to email-service", "error", err.Error())
@@ -157,7 +158,7 @@ func main() {
 			"address", config.Service.AddrGRPC,
 			"error", err.Error())
 	}
-	authGRPCServer := handler.NewAuthGRPCServer(valide, authService, emailService)
+	authGRPCServer := handler.NewAuthGRPCServer(valide, authService, emailService, config.Service.URLFrontend)
 	grpcServer := grpc.NewServer()
 	pbAuth.RegisterAuthServiceServer(grpcServer, authGRPCServer)
 	reflection.Register(grpcServer)

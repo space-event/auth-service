@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/service"
 	pb "github.com/space-event/auth-service/pkg/authpb"
@@ -23,10 +24,13 @@ type AuthGRPCServer struct {
 	authService  *service.AuthService
 	validate     *validator.Validate
 	emailService email.EmailServiceClient
+	config       internal.Config
 }
 
-func NewAuthGRPCServer(validate *validator.Validate, authService *service.AuthService, emailService email.EmailServiceClient) *AuthGRPCServer {
-	return &AuthGRPCServer{validate: validate, authService: authService, emailService: emailService}
+func NewAuthGRPCServer(validate *validator.Validate, authService *service.AuthService,
+	emailService email.EmailServiceClient, config internal.Config) *AuthGRPCServer {
+	return &AuthGRPCServer{validate: validate, authService: authService,
+		emailService: emailService, config: config}
 }
 
 func (s *AuthGRPCServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.AuthResponse,
@@ -189,9 +193,11 @@ func (s *AuthGRPCServer) ForgotPassword(ctx context.Context,
 	hash := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(hash[:])
 
+	urlReset := fmt.Sprintf("%s/reset-password?token=%s", s.config.Service.URLFrontend, token)
+
 	res, err := s.emailService.Send(ctx, &email.EmailRequest{
 		EmailTarget: req.Email,
-		MessageText: fmt.Sprintf("http://localhost:5173/reset-password?token=%s", token),
+		MessageText: fmt.Sprintf(s.config.Service.ResetPasswordMessage, urlReset),
 		ContentType: "text/html",
 		Subject:     "Reset password",
 	})
