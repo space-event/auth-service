@@ -18,7 +18,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/stdlib"
-	auth "github.com/space-event/auth-service/internal"
+	internal "github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/handler"
 	"github.com/space-event/auth-service/internal/infrastructure"
 	"github.com/space-event/auth-service/internal/logger"
@@ -35,7 +35,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func LoadConfig() (*auth.Config, error) {
+func LoadConfig() (*internal.Config, error) {
 	doc, err := os.ReadFile("config/config.toml")
 
 	if err != nil {
@@ -44,7 +44,7 @@ func LoadConfig() (*auth.Config, error) {
 
 	expanded := os.ExpandEnv(string(doc))
 
-	var config auth.Config
+	var config internal.Config
 	err = toml.Unmarshal([]byte(expanded), &config)
 
 	if err != nil {
@@ -139,7 +139,7 @@ func main() {
 
 	// http
 	router := chi.NewRouter()
-	authHandler := handler.NewAuthHandler(authService, emailService, valide)
+	authHandler := handler.NewAuthHandler(authService, emailService, valide, config)
 	router.Post("/v1/auth/register", authHandler.Register)
 	router.Post("/v1/auth/login", authHandler.Login)
 	router.Post("/v1/auth/refresh", authHandler.Refresh)
@@ -158,7 +158,7 @@ func main() {
 			"address", config.Service.AddrGRPC,
 			"error", err.Error())
 	}
-	authGRPCServer := handler.NewAuthGRPCServer(valide, authService, emailService, config.Service.URLFrontend)
+	authGRPCServer := handler.NewAuthGRPCServer(valide, authService, emailService, config)
 	grpcServer := grpc.NewServer()
 	pbAuth.RegisterAuthServiceServer(grpcServer, authGRPCServer)
 	reflection.Register(grpcServer)

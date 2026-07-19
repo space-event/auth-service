@@ -24,11 +24,11 @@ type AuthGRPCServer struct {
 	authService  *service.AuthService
 	validate     *validator.Validate
 	emailService email.EmailServiceClient
-	config       internal.Config
+	config       *internal.Config
 }
 
 func NewAuthGRPCServer(validate *validator.Validate, authService *service.AuthService,
-	emailService email.EmailServiceClient, config internal.Config) *AuthGRPCServer {
+	emailService email.EmailServiceClient, config *internal.Config) *AuthGRPCServer {
 	return &AuthGRPCServer{validate: validate, authService: authService,
 		emailService: emailService, config: config}
 }

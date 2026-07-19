@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/space-event/auth-service/internal"
 	"github.com/space-event/auth-service/internal/logger"
 	"github.com/space-event/auth-service/internal/service"
 	"github.com/space-event/auth-service/pkg/dto"
@@ -19,6 +20,7 @@ type AuthHandler struct {
 	authService  *service.AuthService
 	emailService email.EmailServiceClient
 	validate     *validator.Validate
+	config       *internal.Config
 }
 
 const (
@@ -29,9 +31,10 @@ const (
 )
 
 func NewAuthHandler(authService *service.AuthService, emailService email.EmailServiceClient,
-	validate *validator.Validate,
+	validate *validator.Validate, config *internal.Config,
 ) *AuthHandler {
-	return &AuthHandler{authService: authService, emailService: emailService, validate: validate}
+	return &AuthHandler{authService: authService, emailService: emailService, validate: validate,
+		config: config}
 }
 
 func SetError(w http.ResponseWriter, message string, statusCode int) {
@@ -262,9 +265,11 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(hash[:])
 
+	urlReset := fmt.Sprintf("%s/reset-password?token=%s", h.config.Service.URLFrontend, token)
+
 	res, err := h.emailService.Send(r.Context(), &email.EmailRequest{
 		EmailTarget: req.Email,
-		MessageText: fmt.Sprintf("http://localhost:5173/reset-password?token=%s", token),
+		MessageText: fmt.Sprintf(h.config.Service.ResetPasswordMessage, urlReset),
 		ContentType: "text/html",
 		Subject:     "Reset password",
 	})
